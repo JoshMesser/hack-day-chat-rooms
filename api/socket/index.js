@@ -29,24 +29,15 @@ let bootstrap = (io) => {
       if ( socket.isAdmin ) {
         // remove the username from global admins list
         delete _admins[socket.username];
-
-        // remove admin from all connected rooms
-        for (let i = 0; i < socket.rooms.length; i++) {
-          const room = socket.rooms[i];
-          // echo that client has left
-          socket.to(room).emit('updatechat', 'SERVER', socket.username + ' has disconnected');
-          socket.leave(room);
-        }
-
       } else {
         // remove the username from global clients list
         delete _clients[socket.username];
-        // echo that client has left
-        socket.to(socket.room).emit('updatechat', 'SERVER', socket.username + ' has disconnected');
-        // remove client from connected room
-        socket.leave(socket.room);
       }
 
+      // echo that client has left
+      socket.to(socket.room).emit('updatechat', 'SERVER', socket.username + ' has disconnected');
+      // remove client from connected room
+      socket.leave(socket.room);
     });
 
     // chat message event
