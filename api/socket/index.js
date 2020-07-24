@@ -29,7 +29,7 @@ let bootstrap = (io) => {
       _rooms.push(roomName);
 
       socket.join(roomName);
-      socket.to(socket._room).emit('welcome');
+      io.to(socket._room).emit('welcome');
     });
 
     // disconnect event
