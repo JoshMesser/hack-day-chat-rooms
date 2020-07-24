@@ -1,40 +1,8 @@
 'use strict';
 /* api/socket/indjex.js */
 
-const Moniker = require('moniker');
-const nameGen = Moniker.generator([Moniker.adjective, Moniker.noun]);
-
-const _users = new Map();
-
-/*
-  Pickes a random user nickname based off of a socket ID. If such nickname
-  already exists, then a numeric suffix will be added.
-*/
-let getUser = (id) => {
-  let nickname = _users.get(id);
-
-  // If this ID has not been encountered before
-  if (!nickname) {
-    nickname  = nameGen.choose();
-    let count = 0;
-
-    // Prevent collisions by appending a numeric suffix
-    for (let name of _users.values()) {
-      if (name === nickname) {
-        count += 1;
-      }
-    }
-
-    if (count !== 0) {
-      nickname += ` (${count})`;
-    }
-
-    // Store the ID nickname pair in the map
-    _users.set(id, nickname);
-  }
-
-  return nickname;
-};
+const _clients = {};
+const _admins = {};
 
 /*
   Configure socket.io events.
@@ -42,40 +10,56 @@ let getUser = (id) => {
 let bootstrap = (io) => {
   // connection event
   io.on('connection', (socket) => {
-    socket.username = getUser(socket.id);
 
-    socket.emit('notify user', socket.username);
-    socket.broadcast.emit('user connected', socket.username);
+    socket.on('set client', (username) => {
+      socket.username = username;
+      socket.isAdmin = false;
+      _clients[username] = socket;
+    });
+
+    socket.on('set admin', (username) => {
+      socket.username = username;
+      socket.isAdmin = true;
+      _admins[username] = socket;
+    });
 
     // disconnect event
     socket.on('disconnect', () => {
-      socket.broadcast.emit('user disconnected', socket.username);
+
+      if ( socket.isAdmin ) {
+        // remove the username from global admins list
+        delete _admins[socket.username];
+
+        // remove admin from all connected rooms
+        for (let i = 0; i < socket.rooms.length; i++) {
+          const room = socket.rooms[i];
+          // echo that client has left
+          socket.to(room).emit('updatechat', 'SERVER', socket.username + ' has disconnected');
+          socket.leave(room);
+        }
+
+      } else {
+        // remove the username from global clients list
+        delete _clients[socket.username];
+        // echo that client has left
+        socket.to(socket.room).emit('updatechat', 'SERVER', socket.username + ' has disconnected');
+        // remove client from connected room
+        socket.leave(socket.room);
+      }
+
     });
 
     // chat message event
     socket.on('chat message', (params) => {
       let timestamp = (new Date()).toISOString();
 
-      io.emit('chat message', {
+      io.to(socket.room).emit('chat message', {
         nickname: socket.username,
+        room: socket.room,
         message: params.message,
         time: timestamp
       });
-    });
 
-    // user typing event
-    socket.on('user typing', (isTyping) => {
-      if (isTyping === true) {
-        socket.broadcast.emit('user typing', {
-          nickname: socket.username,
-          isTyping: true
-        });
-      } else {
-        socket.broadcast.emit('user typing', {
-          nickname: socket.username,
-          isTyping: false
-        });
-      }
     });
   });
 };
