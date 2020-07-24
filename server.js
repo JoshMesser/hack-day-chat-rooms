@@ -9,7 +9,7 @@ const morgan  = require('morgan');
 const api     = require('./api');
 
 // Server port
-let port = 3000;
+let port = process.env.PORT || process.env.port || 3000;
 
 // Express middleware
 app.use(morgan('tiny'));
