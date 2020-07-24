@@ -7,8 +7,10 @@
 let bootstrap = (app) => {
   app.use('/', require('./home'));
   app.use('/client', require('./client'));
+  app.use('/admin', require('./admin'));
 };
 
 module.exports = {
   bootstrap: bootstrap
 };
+
