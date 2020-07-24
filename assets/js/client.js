@@ -13,4 +13,8 @@ $(document).ready(function(){
 			$('#messages').append('<li>A support rep will be with you shortly.</li>');
 		});
 	});
+
+	$("#chatForm").submit(function(e){
+		e.preventDefault();
+	});
 });
