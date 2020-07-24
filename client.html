@@ -4,6 +4,9 @@
     <head>
         <title>Client View</title>
         <style>
+            body{
+                font-family: Arial, Helvetica, sans-serif;
+            }
             #chatButton{
                 position: absolute;
                 bottom: 1em;
@@ -75,7 +78,7 @@
             </div>
             <ul id="messages"></ul>
             <p id="typing-event"></p>
-            <form action="">
+            <form id="chatForm" action="">
                 <input id="msg" autocomplete="off" placeholder="Type A Message..."/>
                 <button id='send'>Send</button>
             </form>
