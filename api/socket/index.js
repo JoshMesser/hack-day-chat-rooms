@@ -3,6 +3,7 @@
 
 const _clients = {};
 const _admins = {};
+const _rooms = [];
 
 /*
   Configure socket.io events.
@@ -21,6 +22,14 @@ let bootstrap = (io) => {
       socket.username = username;
       socket.isAdmin = true;
       _admins[username] = socket;
+    });
+
+    socket.on('join room', (roomName) => {
+      socket._room = roomName
+      _rooms.push(roomName);
+
+      socket.join(roomName);
+      socket.to(socket._room).emit('welcome');
     });
 
     // disconnect event
