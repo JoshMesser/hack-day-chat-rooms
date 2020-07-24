@@ -4,10 +4,10 @@ var socket = io();
 
 $( "#selectAdmin" ).click(function() {
     var username = $("#userInput").val();
-    socket.emit('set admin', username);
+    document.location = '/admin?u='+username;
 });
 
 $( "#selectClient" ).click(function() {
     var username = $("#userInput").val();
-    socket.emit('set client', username);
+    document.location = '/client?u='+username;
 });
