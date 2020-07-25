@@ -5,21 +5,50 @@ var socket = io();
 // params `u` is the user's username
 socket.emit('set client', params.u);
 
+// set username on socket
+socket.username = params.u;
+
 $(document).ready(function(){
+	const $chatForm = $('#chatForm');
+
 	$('#chatButton').click(function() {
 		$('#chatBox').toggle("slide");
 
 		// put client into their own room
 		const roomName = 'room-' + socket.username;
-		socket.emit('join room', roomName);
+		socket.emit('create room', roomName);
+		$chatForm.data('room', roomName);
 
 		// Display welcome message after joining room
 		socket.on('welcome', () => {
-			$('#messages').append('<li>A support rep will be with you shortly.</li>');
+			$('#messages').append('<li class="SERVER">[SERVER]: A support rep will be with you shortly.</li>');
+		});
+
+		// updates the chat window
+		socket.on('update chat', params => {
+			const $messages = $('#messages');
+
+			$messages.append('<li class="message">' + '<span title="' + params.time + '">[' + params.username + ']</span>: ' + params.message + '</li>');
 		});
 	});
 
-	$("#chatForm").submit(function(e){
-		e.preventDefault();
+	$chatForm.on('submit', function(evt) {
+		const roomName = $chatForm.data('room');
+		const message = $chatForm.find('input').val();
+		const timestamp = (new Date()).toISOString();
+
+		evt.preventDefault();
+
+		socket.emit('chat message', {
+			username: socket.username,
+			room: roomName,
+			message: message,
+			time: timestamp
+		});
+
+		$chatForm.find('input').val('');
+
+		return false;
 	});
+
 });

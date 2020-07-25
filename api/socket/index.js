@@ -5,6 +5,18 @@ const _clients = {};
 const _admins = {};
 const _rooms = [];
 
+function getRoom(name) {
+  let returnRoom;
+
+  _rooms.forEach(r => {
+    if( r.room === name ) {
+      returnRoom = r;
+    }
+  });
+
+  return returnRoom;
+};
+
 /*
   Configure socket.io events.
 */
@@ -29,17 +41,38 @@ let bootstrap = (io) => {
     });
 
     // Join the user to the requested room
-    socket.on('join room', (roomName) => {
-      socket.room = roomName
+    socket.on('create room', (roomName) => {
+      console.log('client creating room', roomName, socket.username);
+      socket.room = roomName;
+
       _rooms.push({
-        room: roomName,
-        username: socket.username
+        room: socket.room,
+        username: socket.username,
       });
 
-      socket.join(roomName);
+      socket.join(socket.room);
+      // tell admins to update their room list
+      io.emit('room list', _rooms);
       io.to(socket.room).emit('welcome');
     });
 
+    socket.on('join room', (roomName) => {
+      const timestamp = (new Date()).toISOString();
+      const message = socket.username + ' has joined';
+
+      console.log('client joining room', roomName, socket.username, 'admin:', socket.isAdmin);
+
+      socket.room = roomName;
+      socket.join(socket.room);
+      socket.to(socket.room).emit('update chat', {
+        username: 'SERVER',
+        room: socket.room,
+        message: socket.username + ' has joined',
+        time: timestamp
+      });
+    });
+
+    // allows admin users to request a list of all active rooms
     socket.on('request rooms', () => {
       console.log('socket request room list', socket.username, socket.isAdmin);
       if ( socket.isAdmin ) {
@@ -49,6 +82,7 @@ let bootstrap = (io) => {
 
     // disconnect event
     socket.on('disconnect', () => {
+      const timestamp = (new Date()).toISOString();
 
       console.log('socket disconnected', socket.username, 'admin:', socket.isAdmin);
 
@@ -58,10 +92,23 @@ let bootstrap = (io) => {
       } else {
         // remove the username from global clients list
         delete _clients[socket.username];
+
+        // remove the room from global array
+        const room = getRoom(socket.room);
+        if ( room ) {
+          const i = _rooms.indexOf(room);
+          if ( i > -1 ) { _rooms.splice(i, 1); }
+        }
       }
 
       // echo that client has left
-      socket.to(socket.room).emit('updatechat', 'SERVER', socket.username + ' has disconnected');
+      socket.to(socket.room).emit('update chat', {
+        username: 'SERVER',
+        room: socket.room,
+        message: socket.username + ' has disconnected',
+        time: timestamp
+      });
+
       // remove client from connected room
       socket.leave(socket.room);
     });
@@ -70,13 +117,14 @@ let bootstrap = (io) => {
     socket.on('chat message', (params) => {
       let timestamp = (new Date()).toISOString();
 
-      io.to(socket.room).emit('chat message', {
-        nickname: socket.username,
+      console.log('new chat message from', socket.username, 'in room', socket.room , 'message:', params.message);
+
+      io.to(socket.room).emit('update chat', {
+        username: socket.username,
         room: socket.room,
         message: params.message,
         time: timestamp
       });
-
     });
   });
 };
