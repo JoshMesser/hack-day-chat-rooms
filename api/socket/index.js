@@ -42,7 +42,10 @@ let bootstrap = (io) => {
 
     // Join the user to the requested room
     socket.on('create room', (roomName) => {
+      const timestamp = (new Date()).toISOString();
+
       console.log('client creating room', roomName, socket.username);
+
       socket.room = roomName;
 
       _rooms.push({
@@ -51,9 +54,17 @@ let bootstrap = (io) => {
       });
 
       socket.join(socket.room);
+
       // tell admins to update their room list
       io.emit('room list', _rooms);
-      io.to(socket.room).emit('welcome');
+
+      // send welcome message
+      io.to(socket.room).emit('update chat', {
+        username: 'SERVER',
+        room: socket.room,
+        message: 'A support rep will be with you shortly.',
+        time: timestamp
+      });
     });
 
     socket.on('join room', (roomName) => {
@@ -65,9 +76,10 @@ let bootstrap = (io) => {
       socket.room = roomName;
       socket.join(socket.room);
       socket.to(socket.room).emit('update chat', {
+        joined: socket.username,
         username: 'SERVER',
         room: socket.room,
-        message: socket.username + ' has joined',
+        message,
         time: timestamp
       });
     });
@@ -102,7 +114,7 @@ let bootstrap = (io) => {
       }
 
       // echo that client has left
-      socket.to(socket.room).emit('update chat', {
+      io.to(socket.room).emit('update chat', {
         username: 'SERVER',
         room: socket.room,
         message: socket.username + ' has disconnected',
@@ -113,17 +125,18 @@ let bootstrap = (io) => {
       socket.leave(socket.room);
     });
 
-    // chat message event
-    socket.on('chat message', (params) => {
-      let timestamp = (new Date()).toISOString();
+    // send chat message event
+    socket.on('send chat', (message) => {
+      const time = (new Date()).toISOString();
+      const {username, room} = socket;
 
-      console.log('new chat message from', socket.username, 'in room', socket.room , 'message:', params.message);
+      console.log('new chat message from', username, 'in room', room , 'message:', message);
 
-      io.to(socket.room).emit('update chat', {
-        username: socket.username,
-        room: socket.room,
-        message: params.message,
-        time: timestamp
+      io.in(room).emit('update chat', {
+        username,
+        room,
+        message,
+        time
       });
     });
   });

@@ -19,8 +19,8 @@ $(document).ready(function(){
 	 */
 	$rooms.on('click', 'a.room', function(evt) {
 		const $this = $(this);
-		const $messages = $('#messages');
-		const roomName = $this.data('room');
+		const roomName = $.trim( $this.data('room') );
+		const username = $this.text();
 
 		evt.preventDefault();
 
@@ -30,24 +30,22 @@ $(document).ready(function(){
 		$chatForm.data('room', roomName);
 		$chatBox.toggle('slide');
 
+		$('#chatBox .chatHeader p').html('Chatting with ' + username);
+
 		return false;
 	});
 
 	$chatForm.on('submit', function(evt) {
-		const roomName = $chatForm.data('room');
-		const message = $chatForm.find('input').val();
-		const timestamp = (new Date()).toISOString();
+		const $input = $chatForm.find('input');
+		const message = $input.val();
 
 		evt.preventDefault();
 
-		socket.emit('chat message', {
-			username: socket.username,
-			room: roomName,
-			message: message,
-			time: timestamp
-		});
+		socket.emit('send chat', message);
 
-		return;
+		$input.val('');
+
+		return false;
 	});
 
 	/**
@@ -56,7 +54,7 @@ $(document).ready(function(){
 	 */
 	socket.on('room list', rooms => {
 		rooms.forEach(function(room) {
-			$rooms.append('<li><a href="#0" class="room" data-room=" ' + room.room + ' ">' + room.username + '</a></li>');
+			$rooms.append('<li><a href="#0" class="room" data-room="' + room.room + '">' + room.username + '</a></li>');
 		});
 	});
 
@@ -64,7 +62,7 @@ $(document).ready(function(){
 	socket.on('update chat', params => {
 		const $messages = $('#messages');
 
-		$messages.append('<li class="message">' + '<span title="' + params.time + '">[' + params.username + ']</span>: ' + params.message + '</li>');
+		$messages.append('<li class="'+ (params.username === 'SERVER' ? 'event' : 'message') +'">' + '<span title="' + params.time + '">[' + params.username + ']</span>: ' + params.message + '</li>');
 	});
 
 	socket.emit('request rooms');
